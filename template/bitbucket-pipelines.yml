@@ -1,0 +1,49 @@
+image: node:lts
+options:
+  docker: true
+pipelines:
+  default:
+    - step:
+        caches:
+          - node
+        script:
+          # set the imagename to be used as a local ENV
+          - export IMAGE_NAME=eu.gcr.io/$GCLOUD_PROJECT/$BITBUCKET_REPO_SLUG:v$BITBUCKET_BUILD_NUMBER
+
+          # download gcloud CLI
+          - curl -o /tmp/google-cloud-sdk.tar.gz https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-155.0.0-linux-x86_64.tar.gz
+          - tar -xvf /tmp/google-cloud-sdk.tar.gz -C /tmp/
+          - /tmp/google-cloud-sdk/install.sh -q
+          - source /tmp/google-cloud-sdk/path.bash.inc
+
+          # download kubectl
+          - curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
+          - chmod +x ./kubectl
+          - mv ./kubectl /usr/local/bin/kubectl
+
+          # Authencate to gcloud
+          - echo $GCLOUD_API_KEYFILE | base64 --decode --ignore-garbage > ./gcloud-api-key.json
+          - gcloud auth activate-service-account --key-file gcloud-api-key.json
+          - gcloud config set project $GCLOUD_PROJECT
+          - gcloud container clusters get-credentials cluster-2 --zone $GCLOUD_ZONE --project $GCLOUD_PROJECT
+
+          # run npm install here, so that bitbucket will cache the dependencies
+          - yarn config set '@bit:registry' https://node.bitsrc.io
+          - yarn install
+          - yarn build
+
+          # build docker image
+          - docker build -t $IMAGE_NAME .
+
+          # push docker image to Google Container Registry
+          - gcloud docker -- push $IMAGE_NAME
+
+          # change values in the deployment before apply
+          - sed -e "s|DEPLOYMENT_NAME|$BITBUCKET_REPO_SLUG|g; s|IMAGE_NAME|$IMAGE_NAME|g" k8s-deployment.yaml > k8s-deployment-modified.yaml
+
+          # Update the deployment to use the new Docker image
+          - kubectl apply -f k8s-deployment-modified.yaml
+definitions:
+  services:
+    docker:
+      memory: 2048

@@ -1,0 +1,12 @@
+# build stage
+FROM node:lts-alpine as build-stage
+WORKDIR /app
+COPY . .
+RUN yarn build
+
+# production stage
+FROM openresty/openresty:1.11.2.5-alpine-fat
+WORKDIR /usr/local/openresty/nginx
+COPY --from=build-stage /app/openresty/nginx.conf conf
+COPY --from=build-stage /app/dist html
+EXPOSE 80

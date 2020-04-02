@@ -1,0 +1,66 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: DEPLOYMENT_NAME
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: DEPLOYMENT_NAME
+    spec:
+      containers:
+        - name: DEPLOYMENT_NAME
+          image: IMAGE_NAME
+          resources:
+            requests:
+              cpu: '1m'
+          ports:
+            - containerPort: 80
+              protocol: TCP
+          env:
+            - name: PORT
+              value: '80'
+            - name: NODE_ENV
+              value: 'production'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: DEPLOYMENT_NAME
+spec:
+  type: NodePort
+  selector:
+    app: DEPLOYMENT_NAME
+  ports:
+    - port: 80
+      protocol: 'TCP'
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: DEPLOYMENT_NAME
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/use-regex: 'true'
+spec:
+  rules:
+    # Development host
+    - host: dev.reges-services.se
+      http:
+        paths:
+          # example without path
+          - path: /(/|$)(.*)
+            backend:
+              serviceName: DEPLOYMENT_NAME
+              servicePort: 80
+      # Production host
+    - host: prod.reges-services.se
+      http:
+        paths:
+          # example with path
+          - path: /version/path(/|$)(.*)
+            backend:
+              serviceName: DEPLOYMENT_NAME
+              servicePort: 80
