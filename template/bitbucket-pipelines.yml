@@ -38,7 +38,7 @@ pipelines:
           - mv dist dockercontext/
 
           #build docker image
-          - docker build -t $IMAGE_NAME -f ./Dockerfile dockercontext
+          - docker build -t $IMAGE_NAME -f ./dockerfile dockercontext
 
           # push docker image to Google Container Registry
           - gcloud docker -- push $IMAGE_NAME
