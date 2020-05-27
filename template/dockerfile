@@ -2,7 +2,6 @@
 FROM node:lts-alpine as build-stage
 WORKDIR /app
 COPY . .
-RUN yarn build
 
 # production stage
 FROM openresty/openresty:1.11.2.5-alpine-fat

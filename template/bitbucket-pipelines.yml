@@ -32,8 +32,13 @@ pipelines:
           - yarn install
           - yarn build
 
-          # build docker image
-          - docker build -t $IMAGE_NAME .
+          # move files to new docker context
+          - mkdir dockercontext
+          - mv openresty dockercontext/
+          - mv dist dockercontext/
+
+          #build docker image
+          - docker build -t $IMAGE_NAME -f ./Dockerfile dockercontext
 
           # push docker image to Google Container Registry
           - gcloud docker -- push $IMAGE_NAME
